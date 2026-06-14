@@ -1,3 +1,14 @@
+# Build order:
+#   bfs + alpha 
+#   dfs + alpha 
+#   bfs + maze 
+#   dfs + maze 
+#   UCS + weighted graph 
+#   Greedy 
+#   a star 
+#   8 puzzle
+#   chess
+
 # from abc import ABC, abstractmethod
 # class Problem(ABC):
 #
@@ -14,12 +25,16 @@
 class Problem:
     def __init__(self, graph, initial_state, goal):
         self.graph: dict = graph 
-        self.initial_state: str|int = initial_state 
-        self.goal: str|int = goal 
+        self.initial_state = initial_state 
+        self.goal = goal 
 
 
-    def is_goal(self, node_value) -> bool:
-        return True if node_value == self.goal else False
+    def is_goal(self, value) -> bool:
+        return True if value == self.goal else False
+
+
+    def successors_(self, state) -> list:
+        return self.graph.get(state, [])
 
 
 class Node:
@@ -31,7 +46,7 @@ class Node:
 
 
 # Search algorithms 
-from collections import deque
+from collections import deque   # bfs, dfs
 
 def breadth_first_search(problem: Problem) -> Node | None:
     """FIFO queue searching width of the problem space"""
@@ -60,10 +75,58 @@ def breadth_first_search(problem: Problem) -> Node | None:
     return None
 
 
+def depth_first_tree_search(problem: Problem) -> Node | None:
+    """LIFO queue searching depth of the problem space"""
+    start_node: Node = Node(problem.initial_state, None, None, 0)
+    
+    frontier: deque[Node] = deque()
+    frontier.append(start_node)
+
+    while frontier:
+        node = frontier.pop()
+
+        if problem.is_goal(node.value):
+            return node 
+
+        children: list[Node] = expand(problem, node)
+        children.reverse()
+        for child in children:
+            frontier.append(child)
+
+    return None
+
+
+def depth_first_graph_search(problem: Problem) -> Node | None:
+    """LIFO queue searching depth of the problem space"""
+    start_node: Node = Node(problem.initial_state, None, None, 0)
+    
+    if problem.is_goal(start_node.value):
+        return start_node
+
+    frontier: deque[Node] = deque()
+    reached: set = {start_node.value}
+    frontier.append(start_node)
+
+    while frontier:
+        node = frontier.pop()
+
+        if problem.is_goal(node.value):
+            return node 
+
+        children: list[Node] = expand(problem, node)
+        children.reverse()
+        for child in children:
+            if child.value not in reached:
+                frontier.append(child)
+                reached.add(child.value)
+
+    return None
+
+
 def expand(problem: Problem, node: Node) -> list[Node]:
     children = []
 
-    for child_value in problem.graph.get(node.value, []):
+    for child_value in problem.successors_(node.value):
         child = Node(child_value, node, None, node.cost + 1)
         children.append(child)
 
@@ -78,7 +141,17 @@ def print_solution(result: Node|None) -> None:
 
     path.reverse()
     for node in path:
-        print(node)
+        print(node, end=" ")
+    print()
+
+
+from time import perf_counter
+def benchmark(search_function, problem):
+    start = perf_counter()
+    result = search_function(problem)
+    end = perf_counter()
+    print(f"{search_function.__name__}: {end-start:.6f}s")
+    return result
 
 
 # Main
@@ -101,8 +174,11 @@ if __name__ == "__main__":
             }
 
     alphabet: Problem = Problem(graph, "A", "Z")
-    result = breadth_first_search(alphabet)
-    print_solution(result)
+
+    print_solution(benchmark(breadth_first_search, alphabet))
+    print_solution(benchmark(depth_first_tree_search, alphabet))
+    print_solution(benchmark(depth_first_graph_search, alphabet))
+
 
 
 # # # # # # # # # #
@@ -138,8 +214,7 @@ if __name__ == "__main__":
 # #     pass 
 # #
 # #
-# # # TODO
-# # def depth_first_search() -> None:
-# #     pass 
+
 # #
 # #
+
